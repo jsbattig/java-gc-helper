@@ -1,7 +1,5 @@
 package GCHelper.Capability;
 
-import GCHelper.Capability.ConcurrentDependencies;
-import GCHelper.Capability.UnmanagedObjectContext;
 import GCHelper.Interface.DestroyHandleDelegate;
 import org.junit.Test;
 
@@ -39,7 +37,7 @@ public class UnmanagedObjectContextTest implements DestroyHandleDelegate<Integer
     public void getConcurrentDependencies() throws Exception {
         ConcurrentDependencies<String, Integer> deps = new ConcurrentDependencies<String, Integer>();
         UnmanagedObjectContext<String, Integer> context = new UnmanagedObjectContext<String, Integer>(this, deps);
-        assertEquals(deps, context.getConcurrentDependencies());
+        assertEquals(deps, context.getDependencies());
     }
 
     @Test

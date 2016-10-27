@@ -7,7 +7,9 @@ import GCHelper.Exception.EFailedObjectRemoval;
 import GCHelper.Exception.EInvalidRefCount;
 import GCHelper.Exception.EObjectNotFound;
 import GCHelper.Interface.DestroyHandleDelegate;
+import GCHelper.Interface.ExceptionDelegate;
 import GCHelper.Interface.HandleRemover;
+import GCHelper.Service.UnregistrationAgent;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -15,17 +17,28 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRemover<THandleClass, THandle>, Closeable {
     private ConcurrentHashMap<HandleContainer<THandleClass, THandle>, UnmanagedObjectContext<THandleClass, THandle>> _trackedObjects;
+    private UnregistrationAgent<THandleClass, THandle> _unregistrationAgent;
+    private ExceptionDelegate<THandleClass, THandle> _onException;
 
     public UnmanagedObjectGCHelper() {
-      _trackedObjects = new ConcurrentHashMap<HandleContainer<THandleClass, THandle>, UnmanagedObjectContext<THandleClass, THandle>>();
+      _trackedObjects = new ConcurrentHashMap<>();
+      _unregistrationAgent = new UnregistrationAgent<>(this);
     }
 
-    public void RemoveAndDestroyHandle(THandleClass handleClass, THandle obj) {
+    public void setOnException(ExceptionDelegate<THandleClass, THandle> onException) {
+        _onException = onException;
+    }
 
+    public ExceptionDelegate<THandleClass, THandle> getOnException() {
+        return _onException;
     }
 
     public void close() throws IOException {
+        _unregistrationAgent.close();
+    }
 
+    public void StopAgent() throws InterruptedException {
+        _unregistrationAgent.Stop();
     }
 
     public void Register(THandleClass handleClass, THandle obj,
@@ -40,7 +53,7 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
         {
             if (_trackedObjects.putIfAbsent(handleContainer, trackedObject) == null)
             {
-                for (HandleContainer<THandleClass, THandle> dep : trackedObject.getConcurrentDependencies())
+                for (HandleContainer<THandleClass, THandle> dep : trackedObject.getDependencies())
                 {
                     UnmanagedObjectContext<THandleClass, THandle> depContext;
                     if ((depContext = _trackedObjects.get(dep)) == null)
@@ -73,11 +86,11 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
             trackedObject.setDestroyHandleDelegate(destroyHandle);
             break;
         } while (true);
-        for (HandleContainer<THandleClass, THandle> dep : trackedObject.getConcurrentDependencies())
-        AddDependency(trackedObject, dep);
+        for (HandleContainer<THandleClass, THandle> dep : trackedObject.getDependencies())
+          AddDependency(trackedObject, dep);
     }
 
-    public void Unregister(THandleClass handleClass, THandle obj)
+    public void RemoveAndDestroyHandle(THandleClass handleClass, THandle obj)
     {
         try
         {
@@ -93,18 +106,36 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
             if (_trackedObjects.remove(handle) == null)
                 throw new EFailedObjectRemoval(handle.getHandleClass().toString(), handle.getHandle().toString());
             objContext.DestroyAndFree(obj);
-            for (HandleContainer<THandleClass, THandle> dep : objContext.getConcurrentDependencies())
+            for (HandleContainer<THandleClass, THandle> dep : objContext.getDependencies())
               Unregister(dep.getHandleClass(), dep.getHandle());
         }
         catch (Exception e)
         {
-            /*if (OnUnregisterException == null)
+            if (_onException == null)
                 return;
-            OnUnregisterException(this, e, handleClass, obj);*/
+            _onException.ExceptionReport(this, e, handleClass, obj);
         }
     }
 
-    public void AddDependency(UnmanagedObjectContext<THandleClass, THandle> trackedObject, HandleContainer<THandleClass, THandle> dependency) {
+    public void Unregister(THandleClass handleClass, THandle obj) {
+        _unregistrationAgent.Enqueue(handleClass, obj);
+    }
 
+    private void AddDependency(UnmanagedObjectContext<THandleClass, THandle> trackedObjectContext, HandleContainer<THandleClass, THandle> dependency) throws EObjectNotFound
+    {
+        UnmanagedObjectContext<THandleClass, THandle> depContext;
+        if ((depContext = _trackedObjects.get(dependency)) == null)
+            throw new EObjectNotFound(dependency.getHandleClass().toString(), dependency.getHandle().toString());
+        if (trackedObjectContext.getDependencies().Add(dependency.getHandleClass(), dependency.getHandle()))
+            depContext.AddRefCount();
+    }
+
+    public void AddDependency(THandleClass handleClass, THandle obj, THandleClass depHandleClass, THandle dep) throws EObjectNotFound
+    {
+        HandleContainer<THandleClass, THandle> objTuple = new HandleContainer<>(handleClass, obj);
+        UnmanagedObjectContext<THandleClass, THandle> objContext;
+        if ((objContext = _trackedObjects.get(objTuple)) == null)
+            throw new EObjectNotFound(handleClass.toString(), obj.toString());
+        AddDependency(objContext, new HandleContainer<>(depHandleClass, dep));
     }
 }
