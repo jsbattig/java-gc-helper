@@ -1,7 +1,6 @@
 package GCHelper.Capability;
 
 import GCHelper.Interface.DestroyHandleDelegate;
-
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class UnmanagedObjectContext<THandleClass, THandle> {
@@ -38,12 +37,12 @@ public class UnmanagedObjectContext<THandleClass, THandle> {
             _destroyHandleDelegate.DestroyHandle(obj);
     }
 
-    public Integer AddRefCount()
+    public int AddRefCount()
     {
         return _refCount.incrementAndGet();
     }
 
-    public Integer ReleaseRefCount()
+    public int ReleaseRefCount()
     {
         return _refCount.decrementAndGet();
     }

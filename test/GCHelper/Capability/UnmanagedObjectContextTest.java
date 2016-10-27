@@ -9,14 +9,14 @@ public class UnmanagedObjectContextTest implements DestroyHandleDelegate<Integer
     @Test
     public void addRefCount() throws Exception {
         UnmanagedObjectContext<String, Integer> context = new UnmanagedObjectContext<String, Integer>(this, null);
-        assertEquals((Integer)2, context.AddRefCount());
+        assertEquals(2, context.AddRefCount());
     }
 
     @Test
     public void releaseRefCount() throws Exception {
         UnmanagedObjectContext<String, Integer> context = new UnmanagedObjectContext<String, Integer>(this, null);
-        assertEquals((Integer)2, context.AddRefCount());
-        assertEquals((Integer)1, context.ReleaseRefCount());
+        assertEquals(2, context.AddRefCount());
+        assertEquals(1, context.ReleaseRefCount());
     }
 
     private boolean _destroyCalled;

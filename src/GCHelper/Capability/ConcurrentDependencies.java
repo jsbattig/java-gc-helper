@@ -1,7 +1,5 @@
 package GCHelper.Capability;
 
-import GCHelper.Capability.HandleContainer;
-
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentHashMap;
 
