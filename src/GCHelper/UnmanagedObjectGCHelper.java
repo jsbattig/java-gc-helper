@@ -109,6 +109,7 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
             if (_trackedObjects.remove(handle) == null)
                 throw new EFailedObjectRemoval(handle.getHandleClass().toString(), handle.getHandle().toString());
             objContext.DestroyAndFree(obj);
+            System.out.println("DestroyAndFree(" + handleClass.toString() + ":" + obj.toString() + ") called");
             for (HandleContainer<THandleClass, THandle> dep : objContext.getDependencies())
               Unregister(dep.getHandleClass(), dep.getHandle());
         }
