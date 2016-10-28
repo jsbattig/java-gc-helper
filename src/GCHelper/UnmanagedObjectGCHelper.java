@@ -47,6 +47,7 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
         {
             if (_trackedObjects.putIfAbsent(handleContainer, trackedObject) == null)
             {
+                System.out.println("New object tracked(" + handleClass.toString() + ":" + obj.toString() + ") called");
                 for (HandleContainer<THandleClass, THandle> dep : trackedObject.getDependencies())
                 {
                     UnmanagedObjectContext<THandleClass, THandle> depContext;
