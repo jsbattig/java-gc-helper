@@ -35,6 +35,7 @@ public class UnmanagedObjectGCHelperTest implements DestroyHandleDelegate<Intege
         _exceptionClassHandle = "";
         _exceptionHandle = 0;
         _destroyCount = 0;
+        // UnmanagedObjectGCHelper.consoleLoggingEnabled = true;
     }
 
     @Test

@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRemover<THandleClass, THandle>, Closeable {
+    public static boolean consoleLoggingEnabled = false;
     private ConcurrentHashMap<HandleContainer<THandleClass, THandle>, UnmanagedObjectContext<THandleClass, THandle>> _trackedObjects;
     private UnregistrationAgent<THandleClass, THandle> _unregistrationAgent;
     private ExceptionDelegate<THandleClass, THandle> _onException;
@@ -47,7 +48,8 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
         {
             if (_trackedObjects.putIfAbsent(handleContainer, trackedObject) == null)
             {
-                // System.out.println("New object tracked(" + handleClass.toString() + ":" + obj.toString() + ") called");
+                if(consoleLoggingEnabled)
+                    System.out.println("New handle(" + handleClass.toString() + ":" + obj.toString() + ")");
                 for (HandleContainer<THandleClass, THandle> dep : trackedObject.getDependencies())
                 {
                     UnmanagedObjectContext<THandleClass, THandle> depContext;
@@ -69,6 +71,8 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
                 throw new EInvalidRefCount(handleClass.toString(), obj.toString(), newRefCount);
             if (newRefCount == 1)
             {
+                if(consoleLoggingEnabled)
+                    System.out.println("Handle clash(" + handleClass.toString() + ":" + obj.toString() + ")");
                 /* Object is getting removed in another thread. Let's spin while we wait for it to be gone
                  * from our _trackedObjects container */
                 while (_trackedObjects.get(handleContainer) != null)
@@ -79,6 +83,8 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
             /* Object already exists, could be an stale object not yet garbage collected,
              * so we will set the new cleanup methods in place of the current ones */
             trackedObject.setDestroyHandleDelegate(destroyHandle);
+            if(consoleLoggingEnabled)
+                System.out.println("Handle(" + handleClass.toString() + ":" + obj.toString() + ") refCount++ =" + newRefCount);
             break;
         } while (true);
         for (HandleContainer<THandleClass, THandle> dep : trackedObject.getDependencies())
@@ -103,6 +109,8 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
             if ((objContext = _trackedObjects.get(handle)) == null)
                 throw new EObjectNotFound(handle.getHandleClass().toString(), handle.getHandle().toString());
             int newRefCount = objContext.ReleaseRefCount();
+            if(consoleLoggingEnabled)
+                System.out.println("Handle(" + handleClass.toString() + ":" + obj.toString() + ") refCount-- = " + newRefCount);
             if (newRefCount > 0)
                 return; // Object still alive
             if (newRefCount < 0)
@@ -110,7 +118,8 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
             if (_trackedObjects.remove(handle) == null)
                 throw new EFailedObjectRemoval(handle.getHandleClass().toString(), handle.getHandle().toString());
             objContext.DestroyAndFree(obj);
-            // System.out.println("DestroyAndFree(" + handleClass.toString() + ":" + obj.toString() + ") called");
+            if(consoleLoggingEnabled)
+                System.out.println("DestroyAndFree(" + handleClass.toString() + ":" + obj.toString() + ")");
             for (HandleContainer<THandleClass, THandle> dep : objContext.getDependencies())
               Unregister(dep.getHandleClass(), dep.getHandle());
         }
@@ -132,8 +141,12 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
         UnmanagedObjectContext<THandleClass, THandle> depContext;
         if ((depContext = _trackedObjects.get(dependency)) == null)
             throw new EObjectNotFound(dependency.getHandleClass().toString(), dependency.getHandle().toString());
-        if (trackedObjectContext.getDependencies().Add(dependency.getHandleClass(), dependency.getHandle()))
-            depContext.AddRefCount();
+        if (trackedObjectContext.getDependencies().Add(dependency.getHandleClass(), dependency.getHandle())) {
+            int newRefCount = depContext.AddRefCount();
+            if(consoleLoggingEnabled)
+                System.out.println("Dep parent(" + dependency.getHandleClass().toString() + ":" +
+                                   dependency.getHandle().toString() + ") refCount++ =" + newRefCount);
+        }
     }
 
     private class UnmanagedObjectContextTuple {
@@ -158,6 +171,9 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
         UnmanagedObjectContext<THandleClass, THandle> objContext;
         if ((objContext = _trackedObjects.get(objTuple)) == null)
             throw new EObjectNotFound(handleClass.toString(), obj.toString());
+        if(consoleLoggingEnabled)
+            System.out.println("Dep child(" + handleClass.toString() + ":" +
+                               obj.toString() + ")");
         AddDependency(objContext, new HandleContainer<>(depHandleClass, dep));
     }
 
@@ -170,6 +186,10 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
         GetObjectsContexts(objTuple, depTuple, objectContextTuple);
         if (!objectContextTuple.context1.getDependencies().Remove(depTuple.getHandleClass(), depTuple.getHandle()))
             throw new EDependencyNotFound(depHandleClass.toString(), dep.toString());
+        if(consoleLoggingEnabled)
+            System.out.println("Dep child(" +
+                                handleClass.toString() + ":" + obj.toString() + ") removed Dep(" +
+                                depHandleClass.toString() + ":" + dep.toString() + ")");
         Unregister(depHandleClass, dep);
     }
 }
