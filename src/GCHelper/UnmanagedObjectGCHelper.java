@@ -49,7 +49,7 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
             if (_trackedObjects.putIfAbsent(handleContainer, trackedObject) == null)
             {
                 if(consoleLoggingEnabled)
-                    System.out.println("New handle(" + handleClass.toString() + ":" + obj.toString() + ")");
+                    System.out.format("New handle(%s:%s)\r\n", handleClass.toString(), obj.toString());
                 for (HandleContainer<THandleClass, THandle> dep : trackedObject.getDependencies())
                 {
                     UnmanagedObjectContext<THandleClass, THandle> depContext;
@@ -72,7 +72,7 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
             if (newRefCount == 1)
             {
                 if(consoleLoggingEnabled)
-                    System.out.println("Handle clash(" + handleClass.toString() + ":" + obj.toString() + ")");
+                    System.out.format("Handle clash(%s:%s)\r\n", handleClass.toString(), obj.toString());
                 /* Object is getting removed in another thread. Let's spin while we wait for it to be gone
                  * from our _trackedObjects container */
                 while (_trackedObjects.get(handleContainer) != null)
@@ -84,7 +84,7 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
              * so we will set the new cleanup methods in place of the current ones */
             trackedObject.setDestroyHandleDelegate(destroyHandle);
             if(consoleLoggingEnabled)
-                System.out.println("Handle(" + handleClass.toString() + ":" + obj.toString() + ") refCount++ =" + newRefCount);
+                System.out.format("Handle(%s:%s) refCount++ =%d\r\n", handleClass.toString(), obj.toString(), newRefCount);
             break;
         } while (true);
         for (HandleContainer<THandleClass, THandle> dep : trackedObject.getDependencies())
@@ -110,7 +110,7 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
                 throw new EObjectNotFound(handle.getHandleClass().toString(), handle.getHandle().toString());
             int newRefCount = objContext.ReleaseRefCount();
             if(consoleLoggingEnabled)
-                System.out.println("Handle(" + handleClass.toString() + ":" + obj.toString() + ") refCount-- = " + newRefCount);
+                System.out.format("Handle(%s:%s) refCount-- =%d\r\n", handleClass.toString(), obj.toString(), newRefCount);
             if (newRefCount > 0)
                 return; // Object still alive
             if (newRefCount < 0)
@@ -119,7 +119,7 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
                 throw new EFailedObjectRemoval(handle.getHandleClass().toString(), handle.getHandle().toString());
             objContext.DestroyAndFree(obj);
             if(consoleLoggingEnabled)
-                System.out.println("DestroyAndFree(" + handleClass.toString() + ":" + obj.toString() + ")");
+                System.out.format("DestroyAndFree(%s:%s)\r\n", handleClass.toString(), obj.toString());
             for (HandleContainer<THandleClass, THandle> dep : objContext.getDependencies())
               Unregister(dep.getHandleClass(), dep.getHandle());
         }
@@ -144,8 +144,8 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
         if (trackedObjectContext.getDependencies().Add(dependency.getHandleClass(), dependency.getHandle())) {
             int newRefCount = depContext.AddRefCount();
             if(consoleLoggingEnabled)
-                System.out.println("Dep parent(" + dependency.getHandleClass().toString() + ":" +
-                                   dependency.getHandle().toString() + ") refCount++ =" + newRefCount);
+                System.out.format("Dep parent(%s:%s) refCount++ =%d\r\n",
+                                  dependency.getHandleClass().toString(), dependency.getHandle().toString(), newRefCount);
         }
     }
 
@@ -172,8 +172,7 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
         if ((objContext = _trackedObjects.get(objTuple)) == null)
             throw new EObjectNotFound(handleClass.toString(), obj.toString());
         if(consoleLoggingEnabled)
-            System.out.println("Dep child(" + handleClass.toString() + ":" +
-                               obj.toString() + ")");
+            System.out.format("Dep child(%s:%s)\r\n", handleClass.toString(), obj.toString());
         AddDependency(objContext, new HandleContainer<>(depHandleClass, dep));
     }
 
@@ -187,9 +186,8 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
         if (!objectContextTuple.context1.getDependencies().Remove(depTuple.getHandleClass(), depTuple.getHandle()))
             throw new EDependencyNotFound(depHandleClass.toString(), dep.toString());
         if(consoleLoggingEnabled)
-            System.out.println("Dep child(" +
-                                handleClass.toString() + ":" + obj.toString() + ") removed Dep(" +
-                                depHandleClass.toString() + ":" + dep.toString() + ")");
+            System.out.format("Dep child(%s:%s) removed Dep(%s:%s)\r\n", handleClass.toString(), obj.toString(),
+                                depHandleClass.toString(), dep.toString());
         Unregister(depHandleClass, dep);
     }
 }
