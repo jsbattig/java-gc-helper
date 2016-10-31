@@ -31,6 +31,10 @@ public class UnmanagedObjectContext<THandleClass, THandle> {
         return _dependencies;
     }
 
+    public void initDependencies() {
+        _dependencies = new ConcurrentDependencies<>();
+    }
+
     public void DestroyAndFree(THandle obj) throws Exception
     {
         if (_destroyHandleDelegate != null)

@@ -41,8 +41,6 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
                          ConcurrentDependencies<THandleClass, THandle> dependencies) throws EObjectNotFound, EInvalidRefCount
     {
         HandleContainer<THandleClass, THandle> handleContainer = new HandleContainer<>(handleClass, obj);
-        if(dependencies == null)
-            dependencies = new ConcurrentDependencies<>();
         UnmanagedObjectContext<THandleClass, THandle> trackedObject = new UnmanagedObjectContext<>(destroyHandle, dependencies);
         do
         {
@@ -50,6 +48,8 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
             {
                 if(consoleLoggingEnabled)
                     System.out.format("New handle(%s:%s)\r\n", handleClass.toString(), obj.toString());
+                if(trackedObject.getDependencies() == null)
+                    return;
                 for (HandleContainer<THandleClass, THandle> dep : trackedObject.getDependencies())
                 {
                     UnmanagedObjectContext<THandleClass, THandle> depContext;
@@ -87,8 +87,10 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
                 System.out.format("Handle(%s:%s) refCount++ =%d\r\n", handleClass.toString(), obj.toString(), newRefCount);
             break;
         } while (true);
-        for (HandleContainer<THandleClass, THandle> dep : trackedObject.getDependencies())
-          AddDependency(trackedObject, dep);
+        if(dependencies == null)
+            return;
+        for (HandleContainer<THandleClass, THandle> dep : dependencies)
+            AddDependency(trackedObject, dep);
     }
 
     public void Register(THandleClass handleClass, THandle obj,
@@ -120,8 +122,15 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
             objContext.DestroyAndFree(obj);
             if(consoleLoggingEnabled)
                 System.out.format("DestroyAndFree(%s:%s)\r\n", handleClass.toString(), obj.toString());
-            for (HandleContainer<THandleClass, THandle> dep : objContext.getDependencies())
-              Unregister(dep.getHandleClass(), dep.getHandle());
+            if(objContext.getDependencies() == null)
+                return;
+            try {
+                for (HandleContainer<THandleClass, THandle> dep : objContext.getDependencies())
+                    RemoveDependency(handleClass, obj, objContext, dep);
+            } catch(EDependencyNotFound e){
+                /* This is likely caused because concurrently there was a call to Register who initialized _dependencies field
+                *  of our objContext instance. Let's ignore this exception and get out of here */
+            }
         }
         catch (Exception e)
         {
@@ -141,6 +150,8 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
         UnmanagedObjectContext<THandleClass, THandle> depContext;
         if ((depContext = _trackedObjects.get(dependency)) == null)
             throw new EObjectNotFound(dependency.getHandleClass().toString(), dependency.getHandle().toString());
+        if (trackedObjectContext.getDependencies() == null)
+            trackedObjectContext.initDependencies();
         if (trackedObjectContext.getDependencies().Add(dependency.getHandleClass(), dependency.getHandle())) {
             int newRefCount = depContext.AddRefCount();
             if(consoleLoggingEnabled)
@@ -149,19 +160,17 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
         }
     }
 
-    private class UnmanagedObjectContextTuple {
-        public UnmanagedObjectContext<THandleClass, THandle> context1;
-        public UnmanagedObjectContext<THandleClass, THandle> context2;
-    }
-
-    private void GetObjectsContexts(HandleContainer obj1,
-                                    HandleContainer obj2,
-                                    UnmanagedObjectContextTuple contextTuple) throws EObjectNotFound
+    private void RemoveDependency(THandleClass handleClass, THandle obj,
+                                  UnmanagedObjectContext<THandleClass, THandle> trackedObjectContext,
+                                  HandleContainer<THandleClass, THandle> dependency) throws EObjectNotFound, EDependencyNotFound
     {
-        if ((contextTuple.context1 = _trackedObjects.get(obj1)) == null)
-            throw new EObjectNotFound(obj1.getHandleClass().toString(), obj1.getHandle().toString());
-        if ((contextTuple.context2 = _trackedObjects.get(obj2)) == null)
-            throw new EObjectNotFound(obj2.getHandleClass().toString(), obj2.getHandle().toString());
+        if (trackedObjectContext.getDependencies() == null ||
+            !trackedObjectContext.getDependencies().Remove(dependency.getHandleClass(), dependency.getHandle()))
+            throw new EDependencyNotFound(dependency.getHandleClass().toString(), dependency.getHandle().toString());
+        if(consoleLoggingEnabled)
+            System.out.format("Dep child(%s:%s) removed Dep(%s:%s)\r\n", handleClass.toString(), obj.toString(),
+                    dependency.getHandleClass().toString(), dependency.getHandle().toString());
+        Unregister(dependency.getHandleClass(), dependency.getHandle());
     }
 
     public void AddDependency(THandleClass handleClass, THandle obj,
@@ -180,14 +189,12 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
                                  THandleClass depHandleClass, THandle dep) throws EObjectNotFound, EDependencyNotFound
     {
         HandleContainer<THandleClass, THandle> objTuple = new HandleContainer<>(handleClass, obj);
-        HandleContainer<THandleClass, THandle> depTuple = new HandleContainer<>(depHandleClass, dep);
-        UnmanagedObjectContextTuple objectContextTuple = new UnmanagedObjectContextTuple();
-        GetObjectsContexts(objTuple, depTuple, objectContextTuple);
-        if (!objectContextTuple.context1.getDependencies().Remove(depTuple.getHandleClass(), depTuple.getHandle()))
-            throw new EDependencyNotFound(depHandleClass.toString(), dep.toString());
+        UnmanagedObjectContext<THandleClass, THandle> objContext;
+        if ((objContext = _trackedObjects.get(objTuple)) == null)
+            throw new EObjectNotFound(handleClass.toString(), obj.toString());
         if(consoleLoggingEnabled)
-            System.out.format("Dep child(%s:%s) removed Dep(%s:%s)\r\n", handleClass.toString(), obj.toString(),
-                                depHandleClass.toString(), dep.toString());
-        Unregister(depHandleClass, dep);
+            System.out.format("Dep child(%s:%s)\r\n", handleClass.toString(), obj.toString());
+        HandleContainer<THandleClass, THandle> depTuple = new HandleContainer<>(depHandleClass, dep);
+        RemoveDependency(handleClass, obj, objContext, depTuple);
     }
 }
