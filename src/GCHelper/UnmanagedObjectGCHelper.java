@@ -117,19 +117,17 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
                 return; // Object still alive
             if (newRefCount < 0)
                 throw new EInvalidRefCount(handleClass.toString(), obj.toString(), newRefCount);
-            if (_trackedObjects.remove(handle) == null)
-                throw new EFailedObjectRemoval(handle.getHandleClass().toString(), handle.getHandle().toString());
-            objContext.DestroyAndFree(obj);
-            if(consoleLoggingEnabled)
-                System.out.format("DestroyAndFree(%s:%s)\r\n", handleClass.toString(), obj.toString());
-            if(objContext.getDependencies() == null)
-                return;
             try {
+                objContext.DestroyAndFree(obj);
+                if (consoleLoggingEnabled)
+                    System.out.format("DestroyAndFree(%s:%s)\r\n", handleClass.toString(), obj.toString());
+                if (objContext.getDependencies() == null)
+                    return;
                 for (HandleContainer<THandleClass, THandle> dep : objContext.getDependencies())
                     RemoveDependency(handleClass, obj, objContext, dep);
-            } catch(EDependencyNotFound e){
-                /* This is likely caused because concurrently there was a call to Register who initialized _dependencies field
-                *  of our objContext instance. Let's ignore this exception and get out of here */
+            } finally {
+                if (_trackedObjects.remove(handle) == null)
+                    throw new EFailedObjectRemoval(handle.getHandleClass().toString(), handle.getHandle().toString());
             }
         }
         catch (Exception e)
