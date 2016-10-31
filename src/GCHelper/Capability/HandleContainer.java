@@ -18,8 +18,8 @@ public class HandleContainer<THandleClass, THandle> {
 
     @Override
     public boolean equals(Object o) {
-        return ((HandleContainer<THandleClass, THandle>) o)._handleClass == _handleClass &&
-               ((HandleContainer<THandleClass, THandle>) o)._handle == _handle;
+        return ((HandleContainer<THandleClass, THandle>) o)._handleClass.equals(_handleClass) &&
+               ((HandleContainer<THandleClass, THandle>) o)._handle.equals(_handle);
     }
 
     public THandleClass getHandleClass() {

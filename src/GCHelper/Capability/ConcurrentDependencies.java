@@ -8,17 +8,17 @@ public class ConcurrentDependencies<THandleClass, THandle> implements Iterable<H
     private ConcurrentHashMap<HandleContainer<THandleClass, THandle>, Integer> _container;
 
     public ConcurrentDependencies() {
-        _container = new ConcurrentHashMap<HandleContainer<THandleClass, THandle>, Integer>();
+        _container = new ConcurrentHashMap<>();
     }
 
     public boolean Add(THandleClass handleClass, THandle dep)
     {
-        return _container.putIfAbsent(new HandleContainer<THandleClass, THandle>(handleClass, dep), 0) == null;
+        return _container.putIfAbsent(new HandleContainer<>(handleClass, dep), 0) == null;
     }
 
     public boolean Remove(THandleClass handleClass, THandle dep)
     {
-        return _container.remove(new HandleContainer<THandleClass, THandle>(handleClass, dep)) != null;
+        return _container.remove(new HandleContainer<>(handleClass, dep)) != null;
     }
 
     public Iterator<HandleContainer<THandleClass, THandle>> iterator(){
