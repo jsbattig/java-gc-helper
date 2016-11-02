@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRemover<THandleClass, THandle>, Closeable {
     public static boolean consoleLoggingEnabled = false;
+    private boolean _agentRunning;
     private ConcurrentHashMap<HandleContainer<THandleClass, THandle>, UnmanagedObjectContext<THandleClass, THandle>> _trackedObjects;
     private UnregistrationAgent<THandleClass, THandle> _unregistrationAgent;
     private ExceptionDelegate<THandleClass, THandle> _onException;
@@ -18,6 +19,7 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
     public UnmanagedObjectGCHelper() {
       _trackedObjects = new ConcurrentHashMap<>();
       _unregistrationAgent = new UnregistrationAgent<>(this);
+        _agentRunning = true;
     }
 
     public void setOnException(ExceptionDelegate<THandleClass, THandle> onException) {
@@ -33,6 +35,7 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
     }
 
     public void StopAgent() throws InterruptedException {
+        _agentRunning = false;
         _unregistrationAgent.Stop();
     }
 
@@ -139,7 +142,13 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
     }
 
     public void Unregister(THandleClass handleClass, THandle obj) {
-        _unregistrationAgent.Enqueue(handleClass, obj);
+        /* the following code as regards to _agentRunning is not thread safe. But I don't want we pay the cost of a lock operation here
+         * not even a spinlock call. We want Unregister to be as fast as possible. Worst thing that can happen we may leak some unmanaged object
+         * that gets inserted into _unregistrationAgent queue and never destroyed */
+        if(_agentRunning)
+            _unregistrationAgent.Enqueue(handleClass, obj);
+        else
+            RemoveAndDestroyHandle(handleClass, obj);
     }
 
     private void AddDependency(UnmanagedObjectContext<THandleClass, THandle> trackedObjectContext,
