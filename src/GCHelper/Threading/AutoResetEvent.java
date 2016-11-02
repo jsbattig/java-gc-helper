@@ -23,4 +23,8 @@ public class AutoResetEvent {
             monitor.notify(); // open one
         }
     }
+
+    public void reset() {
+        open = false;
+    }
 }
