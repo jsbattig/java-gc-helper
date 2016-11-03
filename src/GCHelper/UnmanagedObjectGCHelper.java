@@ -17,8 +17,8 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
     private ExceptionDelegate<THandleClass, THandle> _onException;
 
     public UnmanagedObjectGCHelper() {
-      _trackedObjects = new ConcurrentHashMap<>();
-      _unregistrationAgent = new UnregistrationAgent<>(this);
+        _trackedObjects = new ConcurrentHashMap<>();
+        _unregistrationAgent = new UnregistrationAgent<>(this);
         _agentRunning = true;
     }
 
