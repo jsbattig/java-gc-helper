@@ -58,7 +58,7 @@ public class UnregistrationAgent<THandleClass, THandleType> implements Closeable
                 }
                 continue;
             }
-            _handleRemover.RemoveAndDestroyHandle(dequeuedHandleContainer.getHandleClass(), dequeuedHandleContainer.getHandle());
+            _handleRemover.RemoveAndCallDestroyHandleDelegate(dequeuedHandleContainer.getHandleClass(), dequeuedHandleContainer.getHandle());
         }
     }
 

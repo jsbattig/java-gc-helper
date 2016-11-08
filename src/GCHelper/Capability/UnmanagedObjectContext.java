@@ -5,13 +5,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class UnmanagedObjectContext<THandleClass, THandle> {
     private DestroyHandleDelegate<THandle> _destroyHandleDelegate;
-    private ConcurrentDependencies<THandleClass, THandle> _dependencies;
+    private HandleCollection<THandleClass, THandle> _parents;
     private AtomicInteger _refCount;
 
     public UnmanagedObjectContext(DestroyHandleDelegate<THandle> destroyHandleDelegate,
-                                  ConcurrentDependencies<THandleClass, THandle> concurrentDependencies) {
+                                  HandleCollection<THandleClass, THandle> parentCollection) {
         setDestroyHandleDelegate(destroyHandleDelegate);
-        setConcurrentDependencies(concurrentDependencies);
+        setParentCollection(parentCollection);
         _refCount = new AtomicInteger(1);
     }
 
@@ -23,16 +23,16 @@ public class UnmanagedObjectContext<THandleClass, THandle> {
         return _destroyHandleDelegate;
     }
 
-    private void setConcurrentDependencies(ConcurrentDependencies<THandleClass, THandle> concurrentDependencies){
-        _dependencies = concurrentDependencies;
+    private void setParentCollection(HandleCollection<THandleClass, THandle> parentCollection){
+        _parents = parentCollection;
     }
 
-    public ConcurrentDependencies<THandleClass, THandle> getDependencies() {
-        return _dependencies;
+    public HandleCollection<THandleClass, THandle> getParents() {
+        return _parents;
     }
 
-    public void initDependencies() {
-        _dependencies = new ConcurrentDependencies<>();
+    public void initParentCollection() {
+        _parents = new HandleCollection<>();
     }
 
     public void DestroyAndFree(THandle obj) throws Exception
