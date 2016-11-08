@@ -3,11 +3,11 @@ package GCHelper.Capability;
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class ConcurrentDependencies<THandleClass, THandle> implements Iterable<HandleContainer<THandleClass, THandle>>
+public class HandleCollection<THandleClass, THandle> implements Iterable<HandleContainer<THandleClass, THandle>>
 {
     private ConcurrentHashMap<HandleContainer<THandleClass, THandle>, Integer> _container;
 
-    public ConcurrentDependencies() {
+    public HandleCollection() {
         _container = new ConcurrentHashMap<>();
     }
 
