@@ -36,7 +36,7 @@ public class UnregistrationAgentTest implements HandleRemover<String, Integer> {
     }
 
     @Override
-    public void RemoveAndDestroyHandle(String handleClass, Integer obj) {
+    public void RemoveAndCallDestroyHandleDelegate(String handleClass, Integer obj) {
         _handleClassDestroyed = handleClass;
         _handleDestroyed = obj;
     }

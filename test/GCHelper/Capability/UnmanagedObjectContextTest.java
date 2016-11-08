@@ -35,9 +35,9 @@ public class UnmanagedObjectContextTest implements DestroyHandleDelegate<Integer
 
     @Test
     public void getConcurrentDependencies() throws Exception {
-        ConcurrentDependencies<String, Integer> deps = new ConcurrentDependencies<String, Integer>();
+        HandleCollection<String, Integer> deps = new HandleCollection<String, Integer>();
         UnmanagedObjectContext<String, Integer> context = new UnmanagedObjectContext<String, Integer>(this, deps);
-        assertEquals(deps, context.getDependencies());
+        assertEquals(deps, context.getParents());
     }
 
     @Test

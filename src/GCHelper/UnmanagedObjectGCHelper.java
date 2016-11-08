@@ -47,7 +47,8 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
         UnmanagedObjectContext<THandleClass, THandle> trackedObject = new UnmanagedObjectContext<>(destroyHandle, parents);
         do
         {
-            if (_trackedObjects.putIfAbsent(handleContainer, trackedObject) == null)
+            UnmanagedObjectContext<THandleClass, THandle> existingContextObj;
+            if ((existingContextObj =_trackedObjects.putIfAbsent(handleContainer, trackedObject)) == null)
             {
                 if(consoleLoggingEnabled)
                     System.out.format("New handle(%s:%s)\r\n", handleClass.toString(), obj.toString());
@@ -62,9 +63,6 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
                 }
                 return;
             }
-            UnmanagedObjectContext<THandleClass, THandle> existingContextObj;
-            if ((existingContextObj = _trackedObjects.get(handleContainer)) == null)
-                continue; // Object just dropped and removed from another thread. Let's try again
             /* If object already existed, under normal conditions AddRefCount() must return a value > 1.
              * If it returns <= 1 it means it just got decremented in another thread, reached zero and
              * it's about to be destroyed. So we will have to wait for that to happen and try again our

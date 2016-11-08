@@ -112,9 +112,9 @@ public class UnmanagedObjectGCHelperTest implements DestroyHandleDelegate<Intege
         assertEquals(0, _handleValue);
         _unmanagedObjectHandler.StopAgent();
         _unmanagedObjectHandler.Unregister("Hello", 1);
-        Thread.sleep(100);
-        assertFalse(_destroyCalled);
-        assertNotEquals(1, _handleValue);
+        Thread.sleep(200);
+        assertTrue(_destroyCalled);
+        assertEquals(1, _handleValue);
     }
 
     @Override
@@ -126,11 +126,11 @@ public class UnmanagedObjectGCHelperTest implements DestroyHandleDelegate<Intege
     }
 
     @Test
-    public void AddDependency() throws Exception {
+    public void AddParent() throws Exception {
         UnmanagedObjectGCHelper<String, Integer> _unmanagedObjectHandler = new UnmanagedObjectGCHelper<>();
         _unmanagedObjectHandler.Register("Hello", 1, this, null);
         _unmanagedObjectHandler.Register("Hello", 2, this, null);
-        _unmanagedObjectHandler.AddDependency("Hello", 1, "Hello", 2);
+        _unmanagedObjectHandler.AddParent("Hello", 1, "Hello", 2);
         _unmanagedObjectHandler.Unregister("Hello", 2);
         Thread.sleep(100);
         assertFalse(_destroyCalled);
@@ -143,16 +143,16 @@ public class UnmanagedObjectGCHelperTest implements DestroyHandleDelegate<Intege
     }
 
     @Test
-    public void AddAndRemoveDependency() throws Exception {
+    public void AddAndRemoveParent() throws Exception {
         UnmanagedObjectGCHelper<String, Integer> _unmanagedObjectHandler = new UnmanagedObjectGCHelper<>();
         _unmanagedObjectHandler.Register("Hello", 1, this, null);
         _unmanagedObjectHandler.Register("Hello", 2, this, null);
-        _unmanagedObjectHandler.AddDependency("Hello", 1, "Hello", 2);
+        _unmanagedObjectHandler.AddParent("Hello", 1, "Hello", 2);
         _unmanagedObjectHandler.Unregister("Hello", 2);
         Thread.sleep(100);
         assertFalse(_destroyCalled);
         assertEquals(0, _handleValue);
-        _unmanagedObjectHandler.RemoveDependency("Hello", 1, "Hello", 2);
+        _unmanagedObjectHandler.RemoveParent("Hello", 1, "Hello", 2);
         Thread.sleep(100);
         assertTrue(_destroyCalled);
         assertEquals(2, _handleValue);
@@ -165,9 +165,9 @@ public class UnmanagedObjectGCHelperTest implements DestroyHandleDelegate<Intege
     }
 
     @Test(expected=EObjectNotFound.class)
-    public void AddDependencyThrowsException() throws EObjectNotFound, EInvalidRefCount, InterruptedException {
+    public void AddParentThrowsException() throws EObjectNotFound, EInvalidRefCount, InterruptedException {
         UnmanagedObjectGCHelper<String, Integer> _unmanagedObjectHandler = new UnmanagedObjectGCHelper<>();
         _unmanagedObjectHandler.Register("Hello", 1, this, null);
-        _unmanagedObjectHandler.AddDependency("Hello", 1, "Hello", 2);
+        _unmanagedObjectHandler.AddParent("Hello", 1, "Hello", 2);
     }
 }
