@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRemover<THandleClass, THandle>, Closeable {
     public static boolean consoleLoggingEnabled = false;
-    private boolean _agentRunning;
+    private volatile boolean _agentRunning;
     private ConcurrentHashMap<HandleContainer<THandleClass, THandle>, UnmanagedObjectContext<THandleClass, THandle>> _trackedObjects;
     private UnregistrationAgent<THandleClass, THandle> _unregistrationAgent;
     private ExceptionDelegate<THandleClass, THandle> _onException;
@@ -43,19 +43,17 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
                          DestroyHandleDelegate<THandle> destroyHandle,
                          HandleCollection<THandleClass, THandle> parents) throws EObjectNotFound, EInvalidRefCount
     {
+        int newRefCount;
+        UnmanagedObjectContext<THandleClass, THandle> existingContextObj;
         HandleContainer<THandleClass, THandle> handleContainer = new HandleContainer<>(handleClass, obj);
         UnmanagedObjectContext<THandleClass, THandle> trackedObject = new UnmanagedObjectContext<>(destroyHandle, parents);
-        do
-        {
-            UnmanagedObjectContext<THandleClass, THandle> existingContextObj;
-            if ((existingContextObj =_trackedObjects.putIfAbsent(handleContainer, trackedObject)) == null)
-            {
-                if(consoleLoggingEnabled)
+        do {
+            if ((existingContextObj = _trackedObjects.putIfAbsent(handleContainer, trackedObject)) == null) {
+                if (consoleLoggingEnabled)
                     System.out.format("New handle(%s:%s)\r\n", handleClass.toString(), obj.toString());
-                if(trackedObject.getParents() == null)
+                if (trackedObject.getParents() == null)
                     return;
-                for (HandleContainer<THandleClass, THandle> dep : trackedObject.getParents())
-                {
+                for (HandleContainer<THandleClass, THandle> dep : trackedObject.getParents()) {
                     UnmanagedObjectContext<THandleClass, THandle> depContext;
                     if ((depContext = _trackedObjects.get(dep)) == null)
                         throw new EObjectNotFound(dep.getHandleClass().toString(), dep.getHandle().toString());
@@ -67,31 +65,27 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
              * If it returns <= 1 it means it just got decremented in another thread, reached zero and
              * it's about to be destroyed. So we will have to wait for that to happen and try again our
              * entire operation */
-            int newRefCount = existingContextObj.AddRefCount();
+            newRefCount = existingContextObj.AddRefCount();
             if (newRefCount <= 0)
                 throw new EInvalidRefCount(handleClass.toString(), obj.toString(), newRefCount);
-            if (newRefCount == 1)
-            {
-                if(consoleLoggingEnabled)
-                    System.out.format("Handle clash(%s:%s)\r\n", handleClass.toString(), obj.toString());
-                /* Object is getting removed in another thread. Let's spin while we wait for it to be gone
-                 * from our _trackedObjects container */
-                while (_trackedObjects.get(handleContainer) != null)
-                    Thread.yield();
-                continue;
-            }
-            trackedObject = existingContextObj;
-            /* Object already exists, could be an stale object not yet garbage collected,
-             * so we will set the new cleanup methods in place of the current ones */
-            trackedObject.setDestroyHandleDelegate(destroyHandle);
-            if(consoleLoggingEnabled)
-                System.out.format("Handle(%s:%s) refCount++ =%d\r\n", handleClass.toString(), obj.toString(), newRefCount);
-            break;
+            if (newRefCount > 1)
+                break;
+            if (consoleLoggingEnabled)
+                System.out.format("Handle clash(%s:%s)\r\n", handleClass.toString(), obj.toString());
+            /* Object is getting removed in another thread. Let's spin while we wait for it to be gone
+             * from our _trackedObjects collection */
+            while (_trackedObjects.get(handleContainer) != null)
+                Thread.yield();
         } while (true);
+        /* Object already exists, could be an stale object not yet garbage collected,
+         * so we will set the new cleanup methods in place of the current ones */
+        existingContextObj.setDestroyHandleDelegate(destroyHandle);
+        if(consoleLoggingEnabled)
+            System.out.format("Handle(%s:%s) refCount++ =%d\r\n", handleClass.toString(), obj.toString(), newRefCount);
         if(parents == null)
             return;
         for (HandleContainer<THandleClass, THandle> dep : parents)
-            AddParent(trackedObject, dep);
+            AddParent(existingContextObj, dep);
     }
 
     public void Register(THandleClass handleClass, THandle obj,
