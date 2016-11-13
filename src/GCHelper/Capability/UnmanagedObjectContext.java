@@ -6,7 +6,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class UnmanagedObjectContext<THandleClass, THandle> {
     private DestroyHandleDelegate<THandle> _destroyHandleDelegate;
     private HandleCollection<THandleClass, THandle> _parents;
-    private AtomicInteger _refCount;
+    private final AtomicInteger _refCount;
 
     public UnmanagedObjectContext(DestroyHandleDelegate<THandle> destroyHandleDelegate,
                                   HandleCollection<THandleClass, THandle> parentCollection) {
@@ -35,8 +35,7 @@ public class UnmanagedObjectContext<THandleClass, THandle> {
         _parents = new HandleCollection<>();
     }
 
-    public void DestroyAndFree(THandle obj) throws Exception
-    {
+    public void DestroyAndFree(THandle obj) {
         if (_destroyHandleDelegate != null)
             _destroyHandleDelegate.DestroyHandle(obj);
     }

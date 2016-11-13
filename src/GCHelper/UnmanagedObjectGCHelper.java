@@ -10,10 +10,11 @@ import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRemover<THandleClass, THandle>, Closeable {
+    @SuppressWarnings("CanBeFinal")
     public static boolean consoleLoggingEnabled = false;
     private volatile boolean _agentRunning;
-    private ConcurrentHashMap<HandleContainer<THandleClass, THandle>, UnmanagedObjectContext<THandleClass, THandle>> _trackedObjects;
-    private UnregistrationAgent<THandleClass, THandle> _unregistrationAgent;
+    private final ConcurrentHashMap<HandleContainer<THandleClass, THandle>, UnmanagedObjectContext<THandleClass, THandle>> _trackedObjects;
+    private final UnregistrationAgent<THandleClass, THandle> _unregistrationAgent;
     private ExceptionDelegate<THandleClass, THandle> _onException;
 
     public UnmanagedObjectGCHelper() {
@@ -122,6 +123,7 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
                     RemoveParent(handleClass, obj, objContext, dep);
             } finally {
                 if (_trackedObjects.remove(handle) == null)
+                    //noinspection ThrowFromFinallyBlock
                     throw new EFailedObjectRemoval(handle.getHandleClass().toString(), handle.getHandle().toString());
             }
         }
@@ -161,7 +163,7 @@ public class UnmanagedObjectGCHelper<THandleClass, THandle> implements HandleRem
 
     private void RemoveParent(THandleClass handleClass, THandle obj,
                               UnmanagedObjectContext<THandleClass, THandle> trackedObjectContext,
-                              HandleContainer<THandleClass, THandle> parent) throws EObjectNotFound, EParentNotFound
+                              HandleContainer<THandleClass, THandle> parent) throws EParentNotFound
     {
         if (trackedObjectContext.getParents() == null ||
             !trackedObjectContext.getParents().Remove(parent.getHandleClass(), parent.getHandle()))

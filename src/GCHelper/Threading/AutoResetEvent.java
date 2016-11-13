@@ -10,7 +10,7 @@ public class AutoResetEvent {
 
     public void waitOne() throws InterruptedException {
         synchronized (monitor) {
-            while (open == false) {
+            while (!open) {
                 monitor.wait();
             }
             open = false; // close for other

@@ -5,7 +5,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class HandleCollection<THandleClass, THandle> implements Iterable<HandleContainer<THandleClass, THandle>>
 {
-    private ConcurrentHashMap<HandleContainer<THandleClass, THandle>, Integer> _container;
+    private final ConcurrentHashMap<HandleContainer<THandleClass, THandle>, Integer> _container;
 
     public HandleCollection() {
         _container = new ConcurrentHashMap<>();
