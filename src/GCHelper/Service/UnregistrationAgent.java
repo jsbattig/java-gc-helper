@@ -10,17 +10,18 @@ import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class UnregistrationAgent<THandleClass, THandleType> implements Closeable, Runnable {
-    private Thread _unregistrationThread;
-    private HandleRemover<THandleClass, THandleType> _handleRemover;
+    private final Thread _unregistrationThread;
+    private final HandleRemover<THandleClass, THandleType> _handleRemover;
     private boolean _requestedStop;
-    private ConcurrentLinkedQueue<HandleContainer<THandleClass, THandleType>> _unregistrationQueue;
-    private AutoResetEvent _eventWaitHandle;
+    private final ConcurrentLinkedQueue<HandleContainer<THandleClass, THandleType>> _unregistrationQueue;
+    private final AutoResetEvent _eventWaitHandle;
 
     @Override
     public void close() throws IOException {
         try {
             Stop();
         } catch(InterruptedException e) {
+            // Don't want exception to float out of this scope
         }
     }
 
